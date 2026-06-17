@@ -1,4 +1,6 @@
-using System.Text;
+using iText.Bouncycastle;
+using iText.Bouncycastleconnector;
+using iText.Commons.Bouncycastle;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -7,6 +9,10 @@ using PrinterServiceAPI.Data;
 using PrinterServiceAPI.Helpers;
 using PrinterServiceAPI.Middleware;
 using PrinterServiceAPI.Services;
+using System.Text;
+
+// ── iText7 BouncyCastle Factory (required for PDF generation) ─
+BouncyCastleFactoryCreator.SetFactory(new BouncyCastleFactory());
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,26 +26,25 @@ var jwtSettings = builder.Configuration
     .Get<JwtSettings>()!;
 
 builder.Services.AddSingleton(jwtSettings);
-builder.Services.AddScoped<IJwtHelper, JwtHelper>();
 
 // ── JWT Authentication ────────────────────────────────────────
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer           = true,
-        ValidateAudience         = true,
-        ValidateLifetime         = true,
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ClockSkew                = TimeSpan.FromMinutes(1),
-        ValidIssuer              = jwtSettings.Issuer,
-        ValidAudience            = jwtSettings.Audience,
-        IssuerSigningKey         = new SymmetricSecurityKey(
+        ClockSkew = TimeSpan.FromMinutes(1),
+        ValidIssuer = jwtSettings.Issuer,
+        ValidAudience = jwtSettings.Audience,
+        IssuerSigningKey = new SymmetricSecurityKey(
                                        Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
     };
 
@@ -57,13 +62,12 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 // ── Application Services ──────────────────────────────────────
-builder.Services.AddScoped<IAuthService,        AuthService>();
-builder.Services.AddScoped<ISiteVisitService,   SiteVisitService>();
-builder.Services.AddScoped<IDashboardService,   DashboardService>();
-builder.Services.AddScoped<ITechnicianService,  TechnicianService>();
-builder.Services.AddScoped<IMachineService,     MachineService>();
-builder.Services.AddScoped<IReportService,      ReportService>();
-//builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ISiteVisitService, SiteVisitService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<ITechnicianService, TechnicianService>();
+builder.Services.AddScoped<IMachineService, MachineService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IJwtHelper, JwtHelper>();
 
 // ── CORS ──────────────────────────────────────────────────────
@@ -84,20 +88,19 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title       = "Printer Service Visit API",
-        Version     = "v1",
+        Title = "Printer Service Visit API",
+        Version = "v1",
         Description = "REST API for the Printer Service Visit Management System"
     });
 
-    // JWT support in Swagger UI
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Name         = "Authorization",
-        Type         = SecuritySchemeType.Http,
-        Scheme       = "Bearer",
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
         BearerFormat = "JWT",
-        In           = ParameterLocation.Header,
-        Description  = "Enter your JWT token. Example: Bearer {token}"
+        In = ParameterLocation.Header,
+        Description = "Enter your JWT token. Example: Bearer {token}"
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -141,13 +144,5 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
-// ── Auto-migrate on startup (dev convenience) ─────────────────
-//if (app.Environment.IsDevelopment())
-//{
-//    using var scope = app.Services.CreateScope();
-//    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-//    await db.Database.MigrateAsync();
-//}
 
 await app.RunAsync();
