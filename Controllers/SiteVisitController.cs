@@ -76,15 +76,21 @@ public class SiteVisitController(ISiteVisitService visitService, IReportService 
     }
 
     // GET /api/visits/export/pdf
+    // Temporarily in ExportPdf controller action — remove after debugging
     [HttpGet("export/pdf")]
     public async Task<IActionResult> ExportPdf([FromQuery] SiteVisitListRequest filter)
     {
-        if (!IsManager)
-            filter = filter with { TechnicianCode = User.FindFirstValue("techCode") };
-
-        var bytes    = await reportService.ExportPdfAsync(filter);
-        var fileName = $"SiteVisitReport_{DateTime.Now:yyyyMMdd_HHmm}.pdf";
-
-        return File(bytes, "application/pdf", fileName);
+        try
+        {
+            if (!IsManager)
+                filter = filter with { TechnicianCode = User.FindFirstValue("techCode") };
+            var bytes = await reportService.ExportPdfAsync(filter);
+            var fileName = $"SiteVisitReport_{DateTime.Now:yyyyMMdd_HHmm}.pdf";
+            return File(bytes, "application/pdf", fileName);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message, detail = ex.InnerException?.Message });
+        }
     }
 }

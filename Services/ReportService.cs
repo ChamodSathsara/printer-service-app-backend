@@ -116,10 +116,13 @@ public class ReportService(AppDbContext db) : IReportService
     {
         var rows = await GetRowsAsync(filter);
 
-        using var ms     = new MemoryStream();
-        using var writer = new PdfWriter(ms);
-        using var pdf    = new PdfDocument(writer);
-        using var doc    = new Document(pdf, iText.Kernel.Geom.PageSize.A4.Rotate());
+        using var ms = new MemoryStream();
+
+        // Don't use `using` on writer/pdf/doc — close doc manually first,
+        // THEN read the stream. Otherwise stream is disposed before ToArray().
+        var writer = new PdfWriter(ms);
+        var pdf = new PdfDocument(writer);
+        var doc = new Document(pdf, iText.Kernel.Geom.PageSize.A4.Rotate());
 
         doc.SetMargins(20, 20, 20, 20);
 
@@ -146,7 +149,7 @@ public class ReportService(AppDbContext db) : IReportService
         string[] headers =
         [
             "ID", "Date", "Time", "Tech Code", "Technician",
-            "Machine Ref#", "Category", "Notes", "Meter", "Lat", "Lng", "Location"
+        "Machine Ref#", "Category", "Notes", "Meter", "Lat", "Lng", "Location"
         ];
 
         var headerBg = new DeviceRgb(30, 64, 175);
@@ -162,7 +165,7 @@ public class ReportService(AppDbContext db) : IReportService
         for (int i = 0; i < rows.Count; i++)
         {
             var row = rows[i];
-            var bg  = i % 2 == 1 ? new DeviceRgb(241, 245, 249) : null;
+            var bg = i % 2 == 1 ? new DeviceRgb(241, 245, 249) : null;
 
             void AddCell(string val)
             {
@@ -189,7 +192,10 @@ public class ReportService(AppDbContext db) : IReportService
         doc.Add(new Paragraph($"Total Records: {rows.Count}")
             .SetFontSize(8).SetBold().SetMarginTop(8));
 
+        // Close doc FIRST — this flushes all PDF bytes into the MemoryStream.
+        // Only AFTER this is ms safe to read.
         doc.Close();
+
         return ms.ToArray();
     }
 
